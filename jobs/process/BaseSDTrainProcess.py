@@ -9,6 +9,7 @@ import os
 import re
 from typing import Union, List, Optional
 
+from matplotlib import pyplot as plt
 import numpy as np
 import yaml
 from diffusers import T2IAdapter, ControlNetModel
@@ -58,6 +59,8 @@ from tqdm import tqdm
 from toolkit.config_modules import SaveConfig, LoggingConfig, SampleConfig, NetworkConfig, TrainConfig, ModelConfig, \
     GenerateImageConfig, EmbeddingConfig, DatasetConfig, preprocess_dataset_raw_config, AdapterConfig, GuidanceConfig
 from toolkit.logging import create_logger
+
+loss_history = []
 
 def flush():
     torch.cuda.empty_cache()
@@ -1739,6 +1742,7 @@ class BaseSDTrainProcess(BaseTrainProcess):
             # flush()
             ### HOOK ###
             loss_dict = self.hook_train_loop(batch_list)
+            loss_history.append(loss_dict['loss'])
             self.timer.stop('train_loop')
             if not did_first_flush:
                 flush()
@@ -1852,6 +1856,15 @@ class BaseSDTrainProcess(BaseTrainProcess):
         ###################################################################
         ##  END TRAIN LOOP
         ###################################################################
+
+        plt.figure(figsize=(8, 4))
+        plt.plot(loss_history, marker='o', linestyle='-', label='Data')
+        plt.title('Line Chart of Float List')
+        plt.xlabel('step')
+        plt.ylabel('loss')
+        plt.grid(True)
+        plt.legend()
+        plt.savefig('loss.png')
 
         self.progress_bar.close()
         if self.train_config.free_u:
